@@ -29,24 +29,32 @@ case $PLATFORM in
 esac
 
 LLVM_VERSION=4.0.0
-download http://llvm.org/releases/$LLVM_VERSION/llvm-$LLVM_VERSION.src.tar.xz llvm-$LLVM_VERSION.src.tar.xz
-download http://llvm.org/releases/$LLVM_VERSION/cfe-$LLVM_VERSION.src.tar.xz cfe-$LLVM_VERSION.src.tar.xz
+
+# download http://llvm.org/releases/$LLVM_VERSION/llvm-$LLVM_VERSION.src.tar.xz llvm-$LLVM_VERSION.src.tar.xz
+# download http://llvm.org/releases/$LLVM_VERSION/cfe-$LLVM_VERSION.src.tar.xz cfe-$LLVM_VERSION.src.tar.xz
 
 mkdir -p $PLATFORM
 cd $PLATFORM
 INSTALL_PATH=`pwd`
-echo "Decompressing archives..."
-tar --totals -xf ../llvm-$LLVM_VERSION.src.tar.xz
+echo "Downloading Source..."
+git clone --recursive git@github.com:dbd64/llvm.git
+git checkout origin/release_40
+git checkout -b release_40
+
+# mv llvm ./llvm-$LLVM_VERSION.src
 cd llvm-$LLVM_VERSION.src
+
 mkdir -p build tools
 cd tools
-tar --totals -xf ../../../cfe-$LLVM_VERSION.src.tar.xz
-rm -Rf clang
-mv cfe-$LLVM_VERSION.src clang
+git clone git@github.com:llvm-mirror/clang.git
+git checkout origin/release_40
+git checkout -b release_40
+
 cd ../build
 
 $CMAKE -DCMAKE_INSTALL_PREFIX=../.. -DDLLVM_BUILD_LLVM_DYLIB=ON -DLLVM_LINK_LLVM_DYLIB=ON -DCMAKE_BUILD_TYPE=Release -DLLVM_TARGETS_TO_BUILD=host -DLIBXML2_LIBRARIES= ..
 make -j $MAKEJ
+make ocaml_doc
 make install
 
 cd ../..

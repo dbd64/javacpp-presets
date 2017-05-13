@@ -2255,6 +2255,7 @@ public static native LLVMValueRef LLVMConstNSWMul(LLVMValueRef LHSConstant, LLVM
 public static native LLVMValueRef LLVMConstNUWMul(LLVMValueRef LHSConstant, LLVMValueRef RHSConstant);
 public static native LLVMValueRef LLVMConstFMul(LLVMValueRef LHSConstant, LLVMValueRef RHSConstant);
 public static native LLVMValueRef LLVMConstUDiv(LLVMValueRef LHSConstant, LLVMValueRef RHSConstant);
+public static native LLVMValueRef LLVMConstExactUDiv(LLVMValueRef LHSConstant, LLVMValueRef RHSConstant);
 public static native LLVMValueRef LLVMConstSDiv(LLVMValueRef LHSConstant, LLVMValueRef RHSConstant);
 public static native LLVMValueRef LLVMConstExactSDiv(LLVMValueRef LHSConstant, LLVMValueRef RHSConstant);
 public static native LLVMValueRef LLVMConstFDiv(LLVMValueRef LHSConstant, LLVMValueRef RHSConstant);
@@ -2540,7 +2541,6 @@ public static native void LLVMSetGC(LLVMValueRef Fn, String Name);
  *
  * @see llvm::Function::addAttribute()
  */
-
 public static native void LLVMAddAttributeAtIndex(LLVMValueRef F, @Cast("LLVMAttributeIndex") int Idx,
                              LLVMAttributeRef A);
 public static native @Cast("unsigned") int LLVMGetAttributeCountAtIndex(LLVMValueRef F, @Cast("LLVMAttributeIndex") int Idx);
@@ -3532,6 +3532,10 @@ public static native LLVMValueRef LLVMBuildUDiv(LLVMBuilderRef arg0, LLVMValueRe
                            @Cast("const char*") BytePointer Name);
 public static native LLVMValueRef LLVMBuildUDiv(LLVMBuilderRef arg0, LLVMValueRef LHS, LLVMValueRef RHS,
                            String Name);
+public static native LLVMValueRef LLVMBuildExactUDiv(LLVMBuilderRef arg0, LLVMValueRef LHS, LLVMValueRef RHS,
+                                @Cast("const char*") BytePointer Name);
+public static native LLVMValueRef LLVMBuildExactUDiv(LLVMBuilderRef arg0, LLVMValueRef LHS, LLVMValueRef RHS,
+                                String Name);
 public static native LLVMValueRef LLVMBuildSDiv(LLVMBuilderRef arg0, LLVMValueRef LHS, LLVMValueRef RHS,
                            @Cast("const char*") BytePointer Name);
 public static native LLVMValueRef LLVMBuildSDiv(LLVMBuilderRef arg0, LLVMValueRef LHS, LLVMValueRef RHS,
@@ -4908,7 +4912,7 @@ public static native @Cast("LLVMBool") int LLVMLinkModules2(LLVMModuleRef Dest, 
  * \{
  */
 
-public static final int LTO_API_VERSION = 20;
+public static final int LTO_API_VERSION = 21;
 
 /**
  * @since prior to LTO_API_VERSION=3
@@ -5021,10 +5025,10 @@ public static native @Cast("lto_bool_t") boolean lto_module_is_object_file_for_t
 public static native @Cast("lto_bool_t") boolean lto_module_has_objc_category(@Const Pointer mem, @Cast("size_t") long length);
 
 /**
-* Checks if a buffer is a loadable object file.
-*
-* @since prior to LTO_API_VERSION=3
-*/
+ * Checks if a buffer is a loadable object file.
+ *
+ * @since prior to LTO_API_VERSION=3
+ */
 public static native @Cast("lto_bool_t") boolean lto_module_is_object_file_in_memory(@Const Pointer mem,
                                                       @Cast("size_t") long length);
 
@@ -5527,6 +5531,29 @@ public static native @ByVal LTOObjectBuffer thinlto_module_get_object(thinlto_co
                                                  @Cast("unsigned int") int index);
 
 /**
+ * Returns the number of object files produced by the ThinLTO CodeGenerator.
+ *
+ * It usually matches the number of input files, but this is not a guarantee of
+ * the API and may change in future implementation, so the client should not
+ * assume it.
+ *
+ * @since LTO_API_VERSION=21
+ */
+public static native @Cast("unsigned int") int thinlto_module_get_num_object_files(thinlto_code_gen_t cg);
+
+/**
+ * Returns the path to the ith object file produced by the ThinLTO
+ * CodeGenerator.
+ *
+ * Client should use \p thinlto_module_get_num_object_files() to get the number
+ * of available objects.
+ *
+ * @since LTO_API_VERSION=21
+ */
+public static native @Cast("const char*") BytePointer thinlto_module_get_object_file(thinlto_code_gen_t cg,
+                                           @Cast("unsigned int") int index);
+
+/**
  * Sets which PIC code model to generate.
  * Returns true on error (check lto_get_error_message() for details).
  *
@@ -5617,6 +5644,19 @@ public static native void thinlto_codegen_set_savetemps_dir(thinlto_code_gen_t c
                                               @Cast("const char*") BytePointer save_temps_dir);
 public static native void thinlto_codegen_set_savetemps_dir(thinlto_code_gen_t cg,
                                               String save_temps_dir);
+
+/**
+ * Set the path to a directory where to save generated object files. This
+ * path can be used by a linker to request on-disk files instead of in-memory
+ * buffers. When set, results are available through
+ * thinlto_module_get_object_file() instead of thinlto_module_get_object().
+ *
+ * @since LTO_API_VERSION=21
+ */
+public static native void thinlto_set_generated_objects_dir(thinlto_code_gen_t cg,
+                                       @Cast("const char*") BytePointer save_temps_dir);
+public static native void thinlto_set_generated_objects_dir(thinlto_code_gen_t cg,
+                                       String save_temps_dir);
 
 /**
  * Sets the cpu to generate code for.
@@ -6864,6 +6904,9 @@ public static native void LLVMAddMergedLoadStoreMotionPass(LLVMPassManagerRef PM
 /** See llvm::createGVNPass function. */
 public static native void LLVMAddGVNPass(LLVMPassManagerRef PM);
 
+/** See llvm::createGVNPass function. */
+public static native void LLVMAddNewGVNPass(LLVMPassManagerRef PM);
+
 /** See llvm::createIndVarSimplifyPass function. */
 public static native void LLVMAddIndVarSimplifyPass(LLVMPassManagerRef PM);
 
@@ -6943,6 +6986,9 @@ public static native void LLVMAddCorrelatedValuePropagationPass(LLVMPassManagerR
 /** See llvm::createEarlyCSEPass function */
 public static native void LLVMAddEarlyCSEPass(LLVMPassManagerRef PM);
 
+/** See llvm::createEarlyCSEPass function */
+public static native void LLVMAddEarlyCSEMemSSAPass(LLVMPassManagerRef PM);
+
 /** See llvm::createLowerExpectIntrinsicPass function */
 public static native void LLVMAddLowerExpectIntrinsicPass(LLVMPassManagerRef PM);
 
@@ -7018,6 +7064,1217 @@ public static native void LLVMAddSLPVectorizePass(LLVMPassManagerRef PM);
 // #endif /* defined(__cplusplus) */
 
 // #endif
+
+
+// Parsed from <llvm-c/DIBuilderBindings.h>
+
+//===- DIBuilderBindings.h - Bindings for DIBuilder -------------*- C++ -*-===//
+//
+//                     The LLVM Compiler Infrastructure
+//
+// This file is distributed under the University of Illinois Open Source
+// License. See LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
+//
+// This file defines C bindings for the DIBuilder class.
+//
+//===----------------------------------------------------------------------===//
+
+// #ifndef LLVM_BINDINGS_GO_LLVM_DIBUILDERBINDINGS_H
+// #define LLVM_BINDINGS_GO_LLVM_DIBUILDERBINDINGS_H
+
+// #include "IRBindings.h"
+// #include "llvm-c/Core.h"
+
+// #ifdef __cplusplus
+// #endif
+
+// FIXME: These bindings shouldn't be Go-specific and should eventually move to
+// a (somewhat) less stable collection of C APIs for use in creating bindings of
+// LLVM in other languages.
+
+@Name("LLVMOpaqueDIBuilder") @Opaque public static class LLVMDIBuilderRef extends Pointer {
+    /** Empty constructor. Calls {@code super((Pointer)null)}. */
+    public LLVMDIBuilderRef() { super((Pointer)null); }
+    /** Pointer cast constructor. Invokes {@link Pointer#Pointer(Pointer)}. */
+    public LLVMDIBuilderRef(Pointer p) { super(p); }
+}
+
+public static native LLVMDIBuilderRef LLVMNewDIBuilder(LLVMModuleRef m);
+
+public static native void LLVMDIBuilderDestroy(LLVMDIBuilderRef d);
+public static native void LLVMDIBuilderFinalize(LLVMDIBuilderRef d);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateCompileUnit(LLVMDIBuilderRef D, @Cast("unsigned") int Language,
+                               @Cast("const char*") BytePointer File, @Cast("const char*") BytePointer Dir,
+                               @Cast("const char*") BytePointer Producer, int Optimized,
+                               @Cast("const char*") BytePointer Flags, @Cast("unsigned") int RuntimeVersion);
+public static native LLVMMetadataRef LLVMDIBuilderCreateCompileUnit(LLVMDIBuilderRef D, @Cast("unsigned") int Language,
+                               String File, String Dir,
+                               String Producer, int Optimized,
+                               String Flags, @Cast("unsigned") int RuntimeVersion);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateFile(LLVMDIBuilderRef D, @Cast("const char*") BytePointer File,
+                                        @Cast("const char*") BytePointer Dir);
+public static native LLVMMetadataRef LLVMDIBuilderCreateFile(LLVMDIBuilderRef D, String File,
+                                        String Dir);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateLexicalBlock(LLVMDIBuilderRef D,
+                                                LLVMMetadataRef Scope,
+                                                LLVMMetadataRef File,
+                                                @Cast("unsigned") int Line, @Cast("unsigned") int Column);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateLexicalBlockFile(LLVMDIBuilderRef D,
+                                                    LLVMMetadataRef Scope,
+                                                    LLVMMetadataRef File,
+                                                    @Cast("unsigned") int Discriminator);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateFunction(
+    LLVMDIBuilderRef D, LLVMMetadataRef Scope, @Cast("const char*") BytePointer Name,
+    @Cast("const char*") BytePointer LinkageName, LLVMMetadataRef File, @Cast("unsigned") int Line,
+    LLVMMetadataRef CompositeType, int IsLocalToUnit, int IsDefinition,
+    @Cast("unsigned") int ScopeLine, @Cast("unsigned") int Flags, int IsOptimized);
+public static native LLVMMetadataRef LLVMDIBuilderCreateFunction(
+    LLVMDIBuilderRef D, LLVMMetadataRef Scope, String Name,
+    String LinkageName, LLVMMetadataRef File, @Cast("unsigned") int Line,
+    LLVMMetadataRef CompositeType, int IsLocalToUnit, int IsDefinition,
+    @Cast("unsigned") int ScopeLine, @Cast("unsigned") int Flags, int IsOptimized);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateAutoVariable(LLVMDIBuilderRef D, LLVMMetadataRef Scope,
+                                @Cast("const char*") BytePointer Name, LLVMMetadataRef File,
+                                @Cast("unsigned") int Line, LLVMMetadataRef Ty,
+                                int AlwaysPreserve, @Cast("unsigned") int Flags);
+public static native LLVMMetadataRef LLVMDIBuilderCreateAutoVariable(LLVMDIBuilderRef D, LLVMMetadataRef Scope,
+                                String Name, LLVMMetadataRef File,
+                                @Cast("unsigned") int Line, LLVMMetadataRef Ty,
+                                int AlwaysPreserve, @Cast("unsigned") int Flags);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateParameterVariable(
+    LLVMDIBuilderRef D, LLVMMetadataRef Scope, @Cast("const char*") BytePointer Name, @Cast("unsigned") int ArgNo,
+    LLVMMetadataRef File, @Cast("unsigned") int Line, LLVMMetadataRef Ty, int AlwaysPreserve,
+    @Cast("unsigned") int Flags);
+public static native LLVMMetadataRef LLVMDIBuilderCreateParameterVariable(
+    LLVMDIBuilderRef D, LLVMMetadataRef Scope, String Name, @Cast("unsigned") int ArgNo,
+    LLVMMetadataRef File, @Cast("unsigned") int Line, LLVMMetadataRef Ty, int AlwaysPreserve,
+    @Cast("unsigned") int Flags);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateBasicType(LLVMDIBuilderRef D,
+                                             @Cast("const char*") BytePointer Name,
+                                             @Cast("uint64_t") long SizeInBits,
+                                             @Cast("uint64_t") long AlignInBits,
+                                             @Cast("unsigned") int Encoding);
+public static native LLVMMetadataRef LLVMDIBuilderCreateBasicType(LLVMDIBuilderRef D,
+                                             String Name,
+                                             @Cast("uint64_t") long SizeInBits,
+                                             @Cast("uint64_t") long AlignInBits,
+                                             @Cast("unsigned") int Encoding);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreatePointerType(LLVMDIBuilderRef D,
+                                               LLVMMetadataRef PointeeType,
+                                               @Cast("uint64_t") long SizeInBits,
+                                               @Cast("uint64_t") long AlignInBits,
+                                               @Cast("const char*") BytePointer Name);
+public static native LLVMMetadataRef LLVMDIBuilderCreatePointerType(LLVMDIBuilderRef D,
+                                               LLVMMetadataRef PointeeType,
+                                               @Cast("uint64_t") long SizeInBits,
+                                               @Cast("uint64_t") long AlignInBits,
+                                               String Name);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateSubroutineType(LLVMDIBuilderRef D, LLVMMetadataRef File,
+                                  LLVMMetadataRef ParameterTypes);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateClassType(
+        LLVMDIBuilderRef Dref, LLVMMetadataRef Scope, @Cast("const char*") BytePointer Name,
+        LLVMMetadataRef File, @Cast("unsigned") int Line, @Cast("uint64_t") long SizeInBits,
+        @Cast("uint64_t") long AlignInBits, @Cast("unsigned") int Flags, LLVMMetadataRef DerivedFrom,
+        LLVMMetadataRef ElementTypes);
+public static native LLVMMetadataRef LLVMDIBuilderCreateClassType(
+        LLVMDIBuilderRef Dref, LLVMMetadataRef Scope, String Name,
+        LLVMMetadataRef File, @Cast("unsigned") int Line, @Cast("uint64_t") long SizeInBits,
+        @Cast("uint64_t") long AlignInBits, @Cast("unsigned") int Flags, LLVMMetadataRef DerivedFrom,
+        LLVMMetadataRef ElementTypes);
+
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateStructType(
+    LLVMDIBuilderRef D, LLVMMetadataRef Scope, @Cast("const char*") BytePointer Name,
+    LLVMMetadataRef File, @Cast("unsigned") int Line, @Cast("uint64_t") long SizeInBits,
+    @Cast("uint64_t") long AlignInBits, @Cast("unsigned") int Flags, LLVMMetadataRef DerivedFrom,
+    LLVMMetadataRef ElementTypes);
+public static native LLVMMetadataRef LLVMDIBuilderCreateStructType(
+    LLVMDIBuilderRef D, LLVMMetadataRef Scope, String Name,
+    LLVMMetadataRef File, @Cast("unsigned") int Line, @Cast("uint64_t") long SizeInBits,
+    @Cast("uint64_t") long AlignInBits, @Cast("unsigned") int Flags, LLVMMetadataRef DerivedFrom,
+    LLVMMetadataRef ElementTypes);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateReplaceableCompositeType(
+    LLVMDIBuilderRef D, @Cast("unsigned") int Tag, @Cast("const char*") BytePointer Name, LLVMMetadataRef Scope,
+    LLVMMetadataRef File, @Cast("unsigned") int Line, @Cast("unsigned") int RuntimeLang,
+    @Cast("uint64_t") long SizeInBits, @Cast("uint64_t") long AlignInBits, @Cast("unsigned") int Flags);
+public static native LLVMMetadataRef LLVMDIBuilderCreateReplaceableCompositeType(
+    LLVMDIBuilderRef D, @Cast("unsigned") int Tag, String Name, LLVMMetadataRef Scope,
+    LLVMMetadataRef File, @Cast("unsigned") int Line, @Cast("unsigned") int RuntimeLang,
+    @Cast("uint64_t") long SizeInBits, @Cast("uint64_t") long AlignInBits, @Cast("unsigned") int Flags);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateMemberType(LLVMDIBuilderRef D, LLVMMetadataRef Scope,
+                              @Cast("const char*") BytePointer Name, LLVMMetadataRef File,
+                              @Cast("unsigned") int Line, @Cast("uint64_t") long SizeInBits,
+                              @Cast("uint64_t") long AlignInBits, @Cast("uint64_t") long OffsetInBits,
+                              @Cast("unsigned") int Flags, LLVMMetadataRef Ty);
+public static native LLVMMetadataRef LLVMDIBuilderCreateMemberType(LLVMDIBuilderRef D, LLVMMetadataRef Scope,
+                              String Name, LLVMMetadataRef File,
+                              @Cast("unsigned") int Line, @Cast("uint64_t") long SizeInBits,
+                              @Cast("uint64_t") long AlignInBits, @Cast("uint64_t") long OffsetInBits,
+                              @Cast("unsigned") int Flags, LLVMMetadataRef Ty);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateArrayType(LLVMDIBuilderRef D,
+                                             @Cast("uint64_t") long SizeInBits,
+                                             @Cast("uint64_t") long AlignInBits,
+                                             LLVMMetadataRef ElementType,
+                                             LLVMMetadataRef Subscripts);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateTypedef(LLVMDIBuilderRef D,
+                                           LLVMMetadataRef Ty, @Cast("const char*") BytePointer Name,
+                                           LLVMMetadataRef File, @Cast("unsigned") int Line,
+                                           LLVMMetadataRef Context);
+public static native LLVMMetadataRef LLVMDIBuilderCreateTypedef(LLVMDIBuilderRef D,
+                                           LLVMMetadataRef Ty, String Name,
+                                           LLVMMetadataRef File, @Cast("unsigned") int Line,
+                                           LLVMMetadataRef Context);
+
+public static native LLVMMetadataRef LLVMDIBuilderGetOrCreateSubrange(LLVMDIBuilderRef D, @Cast("int64_t") long Lo,
+                                                 @Cast("int64_t") long Count);
+
+public static native LLVMMetadataRef LLVMDIBuilderGetOrCreateArray(LLVMDIBuilderRef D,
+                                              @ByPtrPtr LLVMMetadataRef Data,
+                                              @Cast("size_t") long Length);
+public static native LLVMMetadataRef LLVMDIBuilderGetOrCreateArray(LLVMDIBuilderRef D,
+                                              @Cast("LLVMMetadataRef*") PointerPointer Data,
+                                              @Cast("size_t") long Length);
+
+public static native LLVMMetadataRef LLVMDIBuilderGetOrCreateTypeArray(LLVMDIBuilderRef D,
+                                                  @ByPtrPtr LLVMMetadataRef Data,
+                                                  @Cast("size_t") long Length);
+public static native LLVMMetadataRef LLVMDIBuilderGetOrCreateTypeArray(LLVMDIBuilderRef D,
+                                                  @Cast("LLVMMetadataRef*") PointerPointer Data,
+                                                  @Cast("size_t") long Length);
+
+public static native LLVMMetadataRef LLVMDIBuilderCreateExpression(LLVMDIBuilderRef Dref,
+                                              @Cast("int64_t*") LongPointer Addr, @Cast("size_t") long Length);
+public static native LLVMMetadataRef LLVMDIBuilderCreateExpression(LLVMDIBuilderRef Dref,
+                                              @Cast("int64_t*") LongBuffer Addr, @Cast("size_t") long Length);
+public static native LLVMMetadataRef LLVMDIBuilderCreateExpression(LLVMDIBuilderRef Dref,
+                                              @Cast("int64_t*") long[] Addr, @Cast("size_t") long Length);
+
+public static native LLVMValueRef LLVMDIBuilderInsertDeclareAtEnd(LLVMDIBuilderRef Dref,
+                                             LLVMValueRef Storage,
+                                             LLVMMetadataRef VarInfo,
+                                             LLVMMetadataRef Expr,
+                                             @Cast("unsigned") int Line,
+                                             @Cast("unsigned") int Col, LLVMMetadataRef Scope,
+                                             LLVMMetadataRef InlinedAt,
+                                             LLVMBasicBlockRef Block);
+
+public static native LLVMValueRef LLVMDIBuilderInsertValueAtEnd(LLVMDIBuilderRef D, LLVMValueRef Val,
+                                           @Cast("uint64_t") long Offset,
+                                           LLVMMetadataRef VarInfo,
+                                           LLVMMetadataRef Expr,
+                                           LLVMBasicBlockRef Block);
+
+public static native @Cast("char*") BytePointer LLVMPrintMetadataToString(LLVMMetadataRef md);
+
+// #ifdef __cplusplus // extern "C"
+// #endif
+
+// #endif
+
+
+// Parsed from <llvm-c/IRBindings.h>
+
+//===- IRBindings.h - Additional bindings for IR ----------------*- C++ -*-===//
+//
+//                     The LLVM Compiler Infrastructure
+//
+// This file is distributed under the University of Illinois Open Source
+// License. See LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
+//
+// This file defines additional C bindings for the IR component.
+//
+//===----------------------------------------------------------------------===//
+
+// #ifndef LLVM_BINDINGS_GO_LLVM_IRBINDINGS_H
+// #define LLVM_BINDINGS_GO_LLVM_IRBINDINGS_H
+
+// #include "llvm-c/Core.h"
+// #ifdef __cplusplus
+// #include "llvm/IR/Metadata.h"
+// #include "llvm/Support/CBindingWrapping.h"
+// #endif
+
+// #include <stdint.h>
+
+// #ifdef __cplusplus
+// #endif
+
+@Name("LLVMOpaqueMetadata") @Opaque public static class LLVMMetadataRef extends Pointer {
+    /** Empty constructor. Calls {@code super((Pointer)null)}. */
+    public LLVMMetadataRef() { super((Pointer)null); }
+    /** Pointer cast constructor. Invokes {@link Pointer#Pointer(Pointer)}. */
+    public LLVMMetadataRef(Pointer p) { super(p); }
+}
+
+// These functions duplicate the LLVM*FunctionAttr functions in the stable C
+// API. We cannot use the existing functions because they take 32-bit attribute
+// values, and the Go bindings expose all of the LLVM attributes, some of which
+// have values >= 1<<32.
+
+public static native void LLVMAddFunctionAttr2(LLVMValueRef Fn, @Cast("uint64_t") long PA);
+public static native @Cast("uint64_t") long LLVMGetFunctionAttr2(LLVMValueRef Fn);
+public static native void LLVMRemoveFunctionAttr2(LLVMValueRef Fn, @Cast("uint64_t") long PA);
+
+public static native LLVMMetadataRef LLVMConstantAsMetadata(LLVMValueRef Val);
+
+public static native LLVMMetadataRef LLVMMDString2(LLVMContextRef C, @Cast("const char*") BytePointer Str, @Cast("unsigned") int SLen);
+public static native LLVMMetadataRef LLVMMDString2(LLVMContextRef C, String Str, @Cast("unsigned") int SLen);
+public static native LLVMMetadataRef LLVMMDNode2(LLVMContextRef C, @ByPtrPtr LLVMMetadataRef MDs,
+                            @Cast("unsigned") int Count);
+public static native LLVMMetadataRef LLVMMDNode2(LLVMContextRef C, @Cast("LLVMMetadataRef*") PointerPointer MDs,
+                            @Cast("unsigned") int Count);
+public static native LLVMMetadataRef LLVMTemporaryMDNode(LLVMContextRef C, @ByPtrPtr LLVMMetadataRef MDs,
+                                    @Cast("unsigned") int Count);
+public static native LLVMMetadataRef LLVMTemporaryMDNode(LLVMContextRef C, @Cast("LLVMMetadataRef*") PointerPointer MDs,
+                                    @Cast("unsigned") int Count);
+
+public static native void LLVMAddNamedMetadataOperand2(LLVMModuleRef M, @Cast("const char*") BytePointer name,
+                                  LLVMMetadataRef Val);
+public static native void LLVMAddNamedMetadataOperand2(LLVMModuleRef M, String name,
+                                  LLVMMetadataRef Val);
+public static native void LLVMSetMetadata2(LLVMValueRef Inst, @Cast("unsigned") int KindID, LLVMMetadataRef MD);
+
+public static native void LLVMMetadataReplaceAllUsesWith(LLVMMetadataRef MD, LLVMMetadataRef New);
+
+public static native void LLVMSetCurrentDebugLocation2(LLVMBuilderRef Bref, @Cast("unsigned") int Line,
+                                  @Cast("unsigned") int Col, LLVMMetadataRef Scope,
+                                  LLVMMetadataRef InlinedAt);
+
+public static native void LLVMSetSubprogram(LLVMValueRef Fn, LLVMMetadataRef SP);
+
+// #ifdef __cplusplus
+
+
+
+
+
+// #endif
+
+// #endif
+
+
+// Parsed from <llvm/Support/Dwarf_v0.h>
+
+
+@Namespace("llvm") @Opaque public static class StringRef extends Pointer {
+    /** Empty constructor. Calls {@code super((Pointer)null)}. */
+    public StringRef() { super((Pointer)null); }
+    /** Pointer cast constructor. Invokes {@link Pointer#Pointer(Pointer)}. */
+    public StringRef(Pointer p) { super(p); }
+}
+/** enum llvm::dwarf::LLVMConstants */
+public static final long
+
+  DW_TAG_invalid =  ~0L,
+  DW_VIRTUALITY_invalid =  ~0L,
+  DW_MACINFO_invalid =  ~0L,
+
+
+  DWARF_VERSION = 4,
+  DW_PUBTYPES_VERSION = 2,
+  DW_PUBNAMES_VERSION = 2,
+  DW_ARANGES_VERSION = 2;
+
+
+
+@Namespace("llvm::dwarf") @MemberGetter public static native @Cast("const uint32_t") int DW_CIE_ID();
+@Namespace("llvm::dwarf") @MemberGetter public static native @Cast("const uint64_t") long DW64_CIE_ID();
+
+/** enum llvm::dwarf::Tag */
+public static final int
+
+    DW_TAG_array_type =  0x0001,
+    DW_TAG_class_type =  0x0002,
+    DW_TAG_entry_point =  0x0003,
+    DW_TAG_enumeration_type =  0x0004,
+    DW_TAG_formal_parameter =  0x0005,
+    DW_TAG_imported_declaration =  0x0008,
+    DW_TAG_label =  0x000a,
+    DW_TAG_lexical_block =  0x000b,
+    DW_TAG_member =  0x000d,
+    DW_TAG_pointer_type =  0x000f,
+    DW_TAG_reference_type =  0x0010,
+    DW_TAG_compile_unit =  0x0011,
+    DW_TAG_string_type =  0x0012,
+    DW_TAG_structure_type =  0x0013,
+    DW_TAG_subroutine_type =  0x0015,
+    DW_TAG_typedef =  0x0016,
+    DW_TAG_union_type =  0x0017,
+    DW_TAG_unspecified_parameters =  0x0018,
+    DW_TAG_variant =  0x0019,
+    DW_TAG_common_block =  0x001a,
+    DW_TAG_common_inclusion =  0x001b,
+    DW_TAG_inheritance =  0x001c,
+    DW_TAG_inlined_subroutine =  0x001d,
+    DW_TAG_module =  0x001e,
+    DW_TAG_ptr_to_member_type =  0x001f,
+    DW_TAG_set_type =  0x0020,
+    DW_TAG_subrange_type =  0x0021,
+    DW_TAG_with_stmt =  0x0022,
+    DW_TAG_access_declaration =  0x0023,
+    DW_TAG_base_type =  0x0024,
+    DW_TAG_catch_block =  0x0025,
+    DW_TAG_const_type =  0x0026,
+    DW_TAG_constant =  0x0027,
+    DW_TAG_enumerator =  0x0028,
+    DW_TAG_file_type =  0x0029,
+    DW_TAG_friend =  0x002a,
+    DW_TAG_namelist =  0x002b,
+    DW_TAG_namelist_item =  0x002c,
+    DW_TAG_packed_type =  0x002d,
+    DW_TAG_subprogram =  0x002e,
+    DW_TAG_template_type_parameter =  0x002f,
+    DW_TAG_template_value_parameter =  0x0030,
+    DW_TAG_thrown_type =  0x0031,
+    DW_TAG_try_block =  0x0032,
+    DW_TAG_variant_part =  0x0033,
+    DW_TAG_variable =  0x0034,
+    DW_TAG_volatile_type =  0x0035,
+    DW_TAG_dwarf_procedure =  0x0036,
+    DW_TAG_restrict_type =  0x0037,
+    DW_TAG_interface_type =  0x0038,
+    DW_TAG_namespace =  0x0039,
+    DW_TAG_imported_module =  0x003a,
+    DW_TAG_unspecified_type =  0x003b,
+    DW_TAG_partial_unit =  0x003c,
+    DW_TAG_imported_unit =  0x003d,
+    DW_TAG_condition =  0x003f,
+    DW_TAG_shared_type =  0x0040,
+    DW_TAG_type_unit =  0x0041,
+    DW_TAG_rvalue_reference_type =  0x0042,
+    DW_TAG_template_alias =  0x0043,
+    DW_TAG_coarray_type =  0x0044,
+    DW_TAG_generic_subrange =  0x0045,
+    DW_TAG_dynamic_type =  0x0046,
+    DW_TAG_MIPS_loop =  0x4081,
+    DW_TAG_format_label =  0x4101,
+    DW_TAG_function_template =  0x4102,
+    DW_TAG_class_template =  0x4103,
+    DW_TAG_GNU_template_template_param =  0x4106,
+    DW_TAG_GNU_template_parameter_pack =  0x4107,
+    DW_TAG_GNU_formal_parameter_pack =  0x4108,
+    DW_TAG_APPLE_property =  0x4200,
+    DW_TAG_BORLAND_property =  0xb000,
+    DW_TAG_BORLAND_Delphi_string =  0xb001,
+    DW_TAG_BORLAND_Delphi_dynamic_array =  0xb002,
+    DW_TAG_BORLAND_Delphi_set =  0xb003,
+    DW_TAG_BORLAND_Delphi_variant =  0xb004,
+    DW_TAG_lo_user =  0x4080,
+    DW_TAG_hi_user =  0xffff,
+    DW_TAG_user_base =  0x1000;
+
+@Namespace("llvm::dwarf") public static native @Cast("bool") boolean isType(@Cast("llvm::dwarf::Tag") int T);
+
+/** enum llvm::dwarf::Attribute */
+public static final short
+  DW_AT_sibling =  0x01,
+  DW_AT_location =  0x02,
+  DW_AT_name =  0x03,
+  DW_AT_ordering =  0x09,
+  DW_AT_byte_size =  0x0b,
+  DW_AT_bit_offset =  0x0c,
+  DW_AT_bit_size =  0x0d,
+  DW_AT_stmt_list =  0x10,
+  DW_AT_low_pc =  0x11,
+  DW_AT_high_pc =  0x12,
+  DW_AT_language =  0x13,
+  DW_AT_discr =  0x15,
+  DW_AT_discr_value =  0x16,
+  DW_AT_visibility =  0x17,
+  DW_AT_import =  0x18,
+  DW_AT_string_length =  0x19,
+  DW_AT_common_reference =  0x1a,
+  DW_AT_comp_dir =  0x1b,
+  DW_AT_const_value =  0x1c,
+  DW_AT_containing_type =  0x1d,
+  DW_AT_default_value =  0x1e,
+  DW_AT_inline =  0x20,
+  DW_AT_is_optional =  0x21,
+  DW_AT_lower_bound =  0x22,
+  DW_AT_producer =  0x25,
+  DW_AT_prototyped =  0x27,
+  DW_AT_return_addr =  0x2a,
+  DW_AT_start_scope =  0x2c,
+  DW_AT_bit_stride =  0x2e,
+  DW_AT_upper_bound =  0x2f,
+  DW_AT_abstract_origin =  0x31,
+  DW_AT_accessibility =  0x32,
+  DW_AT_address_class =  0x33,
+  DW_AT_artificial =  0x34,
+  DW_AT_base_types =  0x35,
+  DW_AT_calling_convention =  0x36,
+  DW_AT_count =  0x37,
+  DW_AT_data_member_location =  0x38,
+  DW_AT_decl_column =  0x39,
+  DW_AT_decl_file =  0x3a,
+  DW_AT_decl_line =  0x3b,
+  DW_AT_declaration =  0x3c,
+  DW_AT_discr_list =  0x3d,
+  DW_AT_encoding =  0x3e,
+  DW_AT_external =  0x3f,
+  DW_AT_frame_base =  0x40,
+  DW_AT_friend =  0x41,
+  DW_AT_identifier_case =  0x42,
+  DW_AT_macro_info =  0x43,
+  DW_AT_namelist_item =  0x44,
+  DW_AT_priority =  0x45,
+  DW_AT_segment =  0x46,
+  DW_AT_specification =  0x47,
+  DW_AT_static_link =  0x48,
+  DW_AT_type =  0x49,
+  DW_AT_use_location =  0x4a,
+  DW_AT_variable_parameter =  0x4b,
+  DW_AT_virtuality =  0x4c,
+  DW_AT_vtable_elem_location =  0x4d,
+  DW_AT_allocated =  0x4e,
+  DW_AT_associated =  0x4f,
+  DW_AT_data_location =  0x50,
+  DW_AT_byte_stride =  0x51,
+  DW_AT_entry_pc =  0x52,
+  DW_AT_use_UTF8 =  0x53,
+  DW_AT_extension =  0x54,
+  DW_AT_ranges =  0x55,
+  DW_AT_trampoline =  0x56,
+  DW_AT_call_column =  0x57,
+  DW_AT_call_file =  0x58,
+  DW_AT_call_line =  0x59,
+  DW_AT_description =  0x5a,
+  DW_AT_binary_scale =  0x5b,
+  DW_AT_decimal_scale =  0x5c,
+  DW_AT_small =  0x5d,
+  DW_AT_decimal_sign =  0x5e,
+  DW_AT_digit_count =  0x5f,
+  DW_AT_picture_string =  0x60,
+  DW_AT_mutable =  0x61,
+  DW_AT_threads_scaled =  0x62,
+  DW_AT_explicit =  0x63,
+  DW_AT_object_pointer =  0x64,
+  DW_AT_endianity =  0x65,
+  DW_AT_elemental =  0x66,
+  DW_AT_pure =  0x67,
+  DW_AT_recursive =  0x68,
+  DW_AT_signature =  0x69,
+  DW_AT_main_subprogram =  0x6a,
+  DW_AT_data_bit_offset =  0x6b,
+  DW_AT_const_expr =  0x6c,
+  DW_AT_enum_class =  0x6d,
+  DW_AT_linkage_name =  0x6e,
+
+
+  DW_AT_string_length_bit_size =  0x6f,
+  DW_AT_string_length_byte_size =  0x70,
+  DW_AT_rank =  0x71,
+  DW_AT_str_offsets_base =  0x72,
+  DW_AT_addr_base =  0x73,
+  DW_AT_ranges_base =  0x74,
+  DW_AT_dwo_id =  0x75,
+  DW_AT_dwo_name =  0x76,
+  DW_AT_reference =  0x77,
+  DW_AT_rvalue_reference =  0x78,
+  DW_AT_macros =  0x79,
+
+  DW_AT_lo_user =  0x2000,
+  DW_AT_hi_user =  0x3fff,
+
+  DW_AT_MIPS_loop_begin =  0x2002,
+  DW_AT_MIPS_tail_loop_begin =  0x2003,
+  DW_AT_MIPS_epilog_begin =  0x2004,
+  DW_AT_MIPS_loop_unroll_factor =  0x2005,
+  DW_AT_MIPS_software_pipeline_depth =  0x2006,
+  DW_AT_MIPS_linkage_name =  0x2007,
+  DW_AT_MIPS_stride =  0x2008,
+  DW_AT_MIPS_abstract_name =  0x2009,
+  DW_AT_MIPS_clone_origin =  0x200a,
+  DW_AT_MIPS_has_inlines =  0x200b,
+  DW_AT_MIPS_stride_byte =  0x200c,
+  DW_AT_MIPS_stride_elem =  0x200d,
+  DW_AT_MIPS_ptr_dopetype =  0x200e,
+  DW_AT_MIPS_allocatable_dopetype =  0x200f,
+  DW_AT_MIPS_assumed_shape_dopetype =  0x2010,
+
+
+
+  DW_AT_MIPS_assumed_size =  0x2011,
+
+
+  DW_AT_sf_names =  0x2101,
+  DW_AT_src_info =  0x2102,
+  DW_AT_mac_info =  0x2103,
+  DW_AT_src_coords =  0x2104,
+  DW_AT_body_begin =  0x2105,
+  DW_AT_body_end =  0x2106,
+  DW_AT_GNU_vector =  0x2107,
+  DW_AT_GNU_template_name =  0x2110,
+
+  DW_AT_GNU_odr_signature =  0x210f,
+  DW_AT_GNU_macros =  0x2119,
+
+
+  DW_AT_GNU_dwo_name =  0x2130,
+  DW_AT_GNU_dwo_id =  0x2131,
+  DW_AT_GNU_ranges_base =  0x2132,
+  DW_AT_GNU_addr_base =  0x2133,
+  DW_AT_GNU_pubnames =  0x2134,
+  DW_AT_GNU_pubtypes =  0x2135,
+  DW_AT_GNU_discriminator =  0x2136,
+
+
+  DW_AT_BORLAND_property_read =  0x3b11,
+  DW_AT_BORLAND_property_write =  0x3b12,
+  DW_AT_BORLAND_property_implements =  0x3b13,
+  DW_AT_BORLAND_property_index =  0x3b14,
+  DW_AT_BORLAND_property_default =  0x3b15,
+  DW_AT_BORLAND_Delphi_unit =  0x3b20,
+  DW_AT_BORLAND_Delphi_class =  0x3b21,
+  DW_AT_BORLAND_Delphi_record =  0x3b22,
+  DW_AT_BORLAND_Delphi_metaclass =  0x3b23,
+  DW_AT_BORLAND_Delphi_constructor =  0x3b24,
+  DW_AT_BORLAND_Delphi_destructor =  0x3b25,
+  DW_AT_BORLAND_Delphi_anonymous_method =  0x3b26,
+  DW_AT_BORLAND_Delphi_interface =  0x3b27,
+  DW_AT_BORLAND_Delphi_ABI =  0x3b28,
+  DW_AT_BORLAND_Delphi_return =  0x3b29,
+  DW_AT_BORLAND_Delphi_frameptr =  0x3b30,
+  DW_AT_BORLAND_closure =  0x3b31,
+
+
+  DW_AT_LLVM_include_path =  0x3e00,
+  DW_AT_LLVM_config_macros =  0x3e01,
+  DW_AT_LLVM_isysroot =  0x3e02,
+
+
+  DW_AT_APPLE_optimized =  0x3fe1,
+  DW_AT_APPLE_flags =  0x3fe2,
+  DW_AT_APPLE_isa =  0x3fe3,
+  DW_AT_APPLE_block =  0x3fe4,
+  DW_AT_APPLE_major_runtime_vers =  0x3fe5,
+  DW_AT_APPLE_runtime_class =  0x3fe6,
+  DW_AT_APPLE_omit_frame_ptr =  0x3fe7,
+  DW_AT_APPLE_property_name =  0x3fe8,
+  DW_AT_APPLE_property_getter =  0x3fe9,
+  DW_AT_APPLE_property_setter =  0x3fea,
+  DW_AT_APPLE_property_attribute =  0x3feb,
+  DW_AT_APPLE_objc_complete_type =  0x3fec,
+  DW_AT_APPLE_property =  0x3fed;
+
+/** enum llvm::dwarf::Form */
+public static final short
+
+  DW_FORM_addr =  0x01,
+  DW_FORM_block2 =  0x03,
+  DW_FORM_block4 =  0x04,
+  DW_FORM_data2 =  0x05,
+  DW_FORM_data4 =  0x06,
+  DW_FORM_data8 =  0x07,
+  DW_FORM_string =  0x08,
+  DW_FORM_block =  0x09,
+  DW_FORM_block1 =  0x0a,
+  DW_FORM_data1 =  0x0b,
+  DW_FORM_flag =  0x0c,
+  DW_FORM_sdata =  0x0d,
+  DW_FORM_strp =  0x0e,
+  DW_FORM_udata =  0x0f,
+  DW_FORM_ref_addr =  0x10,
+  DW_FORM_ref1 =  0x11,
+  DW_FORM_ref2 =  0x12,
+  DW_FORM_ref4 =  0x13,
+  DW_FORM_ref8 =  0x14,
+  DW_FORM_ref_udata =  0x15,
+  DW_FORM_indirect =  0x16,
+  DW_FORM_sec_offset =  0x17,
+  DW_FORM_exprloc =  0x18,
+  DW_FORM_flag_present =  0x19,
+  DW_FORM_ref_sig8 =  0x20,
+
+
+  DW_FORM_GNU_addr_index =  0x1f01,
+  DW_FORM_GNU_str_index =  0x1f02,
+
+
+  DW_FORM_GNU_ref_alt =  0x1f20,
+  DW_FORM_GNU_strp_alt =  0x1f21;
+
+/** enum llvm::dwarf::LocationAtom */
+public static final int
+
+    DW_OP_addr =  0x03,
+    DW_OP_deref =  0x06,
+    DW_OP_const1u =  0x08,
+    DW_OP_const1s =  0x09,
+    DW_OP_const2u =  0x0a,
+    DW_OP_const2s =  0x0b,
+    DW_OP_const4u =  0x0c,
+    DW_OP_const4s =  0x0d,
+    DW_OP_const8u =  0x0e,
+    DW_OP_const8s =  0x0f,
+    DW_OP_constu =  0x10,
+    DW_OP_consts =  0x11,
+    DW_OP_dup =  0x12,
+    DW_OP_drop =  0x13,
+    DW_OP_over =  0x14,
+    DW_OP_pick =  0x15,
+    DW_OP_swap =  0x16,
+    DW_OP_rot =  0x17,
+    DW_OP_xderef =  0x18,
+    DW_OP_abs =  0x19,
+    DW_OP_and =  0x1a,
+    DW_OP_div =  0x1b,
+    DW_OP_minus =  0x1c,
+    DW_OP_mod =  0x1d,
+    DW_OP_mul =  0x1e,
+    DW_OP_neg =  0x1f,
+    DW_OP_not =  0x20,
+    DW_OP_or =  0x21,
+    DW_OP_plus =  0x22,
+    DW_OP_plus_uconst =  0x23,
+    DW_OP_shl =  0x24,
+    DW_OP_shr =  0x25,
+    DW_OP_shra =  0x26,
+    DW_OP_xor =  0x27,
+    DW_OP_skip =  0x2f,
+    DW_OP_bra =  0x28,
+    DW_OP_eq =  0x29,
+    DW_OP_ge =  0x2a,
+    DW_OP_gt =  0x2b,
+    DW_OP_le =  0x2c,
+    DW_OP_lt =  0x2d,
+    DW_OP_ne =  0x2e,
+    DW_OP_lit0 =  0x30,
+    DW_OP_lit1 =  0x31,
+    DW_OP_lit2 =  0x32,
+    DW_OP_lit3 =  0x33,
+    DW_OP_lit4 =  0x34,
+    DW_OP_lit5 =  0x35,
+    DW_OP_lit6 =  0x36,
+    DW_OP_lit7 =  0x37,
+    DW_OP_lit8 =  0x38,
+    DW_OP_lit9 =  0x39,
+    DW_OP_lit10 =  0x3a,
+    DW_OP_lit11 =  0x3b,
+    DW_OP_lit12 =  0x3c,
+    DW_OP_lit13 =  0x3d,
+    DW_OP_lit14 =  0x3e,
+    DW_OP_lit15 =  0x3f,
+    DW_OP_lit16 =  0x40,
+    DW_OP_lit17 =  0x41,
+    DW_OP_lit18 =  0x42,
+    DW_OP_lit19 =  0x43,
+    DW_OP_lit20 =  0x44,
+    DW_OP_lit21 =  0x45,
+    DW_OP_lit22 =  0x46,
+    DW_OP_lit23 =  0x47,
+    DW_OP_lit24 =  0x48,
+    DW_OP_lit25 =  0x49,
+    DW_OP_lit26 =  0x4a,
+    DW_OP_lit27 =  0x4b,
+    DW_OP_lit28 =  0x4c,
+    DW_OP_lit29 =  0x4d,
+    DW_OP_lit30 =  0x4e,
+    DW_OP_lit31 =  0x4f,
+    DW_OP_reg0 =  0x50,
+    DW_OP_reg1 =  0x51,
+    DW_OP_reg2 =  0x52,
+    DW_OP_reg3 =  0x53,
+    DW_OP_reg4 =  0x54,
+    DW_OP_reg5 =  0x55,
+    DW_OP_reg6 =  0x56,
+    DW_OP_reg7 =  0x57,
+    DW_OP_reg8 =  0x58,
+    DW_OP_reg9 =  0x59,
+    DW_OP_reg10 =  0x5a,
+    DW_OP_reg11 =  0x5b,
+    DW_OP_reg12 =  0x5c,
+    DW_OP_reg13 =  0x5d,
+    DW_OP_reg14 =  0x5e,
+    DW_OP_reg15 =  0x5f,
+    DW_OP_reg16 =  0x60,
+    DW_OP_reg17 =  0x61,
+    DW_OP_reg18 =  0x62,
+    DW_OP_reg19 =  0x63,
+    DW_OP_reg20 =  0x64,
+    DW_OP_reg21 =  0x65,
+    DW_OP_reg22 =  0x66,
+    DW_OP_reg23 =  0x67,
+    DW_OP_reg24 =  0x68,
+    DW_OP_reg25 =  0x69,
+    DW_OP_reg26 =  0x6a,
+    DW_OP_reg27 =  0x6b,
+    DW_OP_reg28 =  0x6c,
+    DW_OP_reg29 =  0x6d,
+    DW_OP_reg30 =  0x6e,
+    DW_OP_reg31 =  0x6f,
+    DW_OP_breg0 =  0x70,
+    DW_OP_breg1 =  0x71,
+    DW_OP_breg2 =  0x72,
+    DW_OP_breg3 =  0x73,
+    DW_OP_breg4 =  0x74,
+    DW_OP_breg5 =  0x75,
+    DW_OP_breg6 =  0x76,
+    DW_OP_breg7 =  0x77,
+    DW_OP_breg8 =  0x78,
+    DW_OP_breg9 =  0x79,
+    DW_OP_breg10 =  0x7a,
+    DW_OP_breg11 =  0x7b,
+    DW_OP_breg12 =  0x7c,
+    DW_OP_breg13 =  0x7d,
+    DW_OP_breg14 =  0x7e,
+    DW_OP_breg15 =  0x7f,
+    DW_OP_breg16 =  0x80,
+    DW_OP_breg17 =  0x81,
+    DW_OP_breg18 =  0x82,
+    DW_OP_breg19 =  0x83,
+    DW_OP_breg20 =  0x84,
+    DW_OP_breg21 =  0x85,
+    DW_OP_breg22 =  0x86,
+    DW_OP_breg23 =  0x87,
+    DW_OP_breg24 =  0x88,
+    DW_OP_breg25 =  0x89,
+    DW_OP_breg26 =  0x8a,
+    DW_OP_breg27 =  0x8b,
+    DW_OP_breg28 =  0x8c,
+    DW_OP_breg29 =  0x8d,
+    DW_OP_breg30 =  0x8e,
+    DW_OP_breg31 =  0x8f,
+    DW_OP_regx =  0x90,
+    DW_OP_fbreg =  0x91,
+    DW_OP_bregx =  0x92,
+    DW_OP_piece =  0x93,
+    DW_OP_deref_size =  0x94,
+    DW_OP_xderef_size =  0x95,
+    DW_OP_nop =  0x96,
+    DW_OP_push_object_address =  0x97,
+    DW_OP_call2 =  0x98,
+    DW_OP_call4 =  0x99,
+    DW_OP_call_ref =  0x9a,
+    DW_OP_form_tls_address =  0x9b,
+    DW_OP_call_frame_cfa =  0x9c,
+    DW_OP_bit_piece =  0x9d,
+    DW_OP_implicit_value =  0x9e,
+    DW_OP_stack_value =  0x9f,
+
+
+    DW_OP_GNU_push_tls_address =  0xe0,
+
+
+    DW_OP_GNU_addr_index =  0xfb,
+    DW_OP_GNU_const_index =  0xfc,
+    DW_OP_lo_user =  0xe0,
+    DW_OP_hi_user =  0xff;
+
+/** enum llvm::dwarf::TypeKind */
+public static final int
+
+    DW_ATE_address =  0x01,
+    DW_ATE_boolean =  0x02,
+    DW_ATE_complex_float =  0x03,
+    DW_ATE_float =  0x04,
+    DW_ATE_signed =  0x05,
+    DW_ATE_signed_char =  0x06,
+    DW_ATE_unsigned =  0x07,
+    DW_ATE_unsigned_char =  0x08,
+    DW_ATE_imaginary_float =  0x09,
+    DW_ATE_packed_decimal =  0x0a,
+    DW_ATE_numeric_string =  0x0b,
+    DW_ATE_edited =  0x0c,
+    DW_ATE_signed_fixed =  0x0d,
+    DW_ATE_unsigned_fixed =  0x0e,
+    DW_ATE_decimal_float =  0x0f,
+    DW_ATE_UTF =  0x10,
+    DW_ATE_lo_user =  0x80,
+    DW_ATE_hi_user =  0xff;
+
+/** enum llvm::dwarf::DecimalSignEncoding */
+public static final int
+
+  DW_DS_unsigned =  0x01,
+  DW_DS_leading_overpunch =  0x02,
+  DW_DS_trailing_overpunch =  0x03,
+  DW_DS_leading_separate =  0x04,
+  DW_DS_trailing_separate =  0x05;
+
+/** enum llvm::dwarf::EndianityEncoding */
+public static final int
+
+  DW_END_default =  0x00,
+  DW_END_big =  0x01,
+  DW_END_little =  0x02,
+  DW_END_lo_user =  0x40,
+  DW_END_hi_user =  0xff;
+
+/** enum llvm::dwarf::AccessAttribute */
+public static final int
+
+  DW_ACCESS_public =  0x01,
+  DW_ACCESS_protected =  0x02,
+  DW_ACCESS_private =  0x03;
+
+/** enum llvm::dwarf::VisibilityAttribute */
+public static final int
+
+  DW_VIS_local =  0x01,
+  DW_VIS_exported =  0x02,
+  DW_VIS_qualified =  0x03;
+
+/** enum llvm::dwarf::VirtualityAttribute */
+public static final int
+
+    DW_VIRTUALITY_none =  0x00,
+    DW_VIRTUALITY_virtual =  0x01,
+    DW_VIRTUALITY_pure_virtual =  0x02,
+    DW_VIRTUALITY_max =  0x02;
+
+/** enum llvm::dwarf::SourceLanguage */
+public static final int
+
+    DW_LANG_C89 =  0x0001,
+    DW_LANG_C =  0x0002,
+    DW_LANG_Ada83 =  0x0003,
+    DW_LANG_C_plus_plus =  0x0004,
+    DW_LANG_Cobol74 =  0x0005,
+    DW_LANG_Cobol85 =  0x0006,
+    DW_LANG_Fortran77 =  0x0007,
+    DW_LANG_Fortran90 =  0x0008,
+    DW_LANG_Pascal83 =  0x0009,
+    DW_LANG_Modula2 =  0x000a,
+    DW_LANG_Java =  0x000b,
+    DW_LANG_C99 =  0x000c,
+    DW_LANG_Ada95 =  0x000d,
+    DW_LANG_Fortran95 =  0x000e,
+    DW_LANG_PLI =  0x000f,
+    DW_LANG_ObjC =  0x0010,
+    DW_LANG_ObjC_plus_plus =  0x0011,
+    DW_LANG_UPC =  0x0012,
+    DW_LANG_D =  0x0013,
+
+
+    DW_LANG_Python =  0x0014,
+    DW_LANG_OpenCL =  0x0015,
+    DW_LANG_Go =  0x0016,
+    DW_LANG_Modula3 =  0x0017,
+    DW_LANG_Haskell =  0x0018,
+    DW_LANG_C_plus_plus_03 =  0x0019,
+    DW_LANG_C_plus_plus_11 =  0x001a,
+    DW_LANG_OCaml =  0x001b,
+    DW_LANG_Rust =  0x001c,
+    DW_LANG_C11 =  0x001d,
+    DW_LANG_Swift =  0x001e,
+    DW_LANG_Julia =  0x001f,
+    DW_LANG_Dylan =  0x0020,
+    DW_LANG_C_plus_plus_14 =  0x0021,
+    DW_LANG_Fortran03 =  0x0022,
+    DW_LANG_Fortran08 =  0x0023,
+    DW_LANG_Mips_Assembler =  0x8001,
+    DW_LANG_GOOGLE_RenderScript =  0x8e57,
+    DW_LANG_BORLAND_Delphi =  0xb000,
+    DW_LANG_lo_user =  0x8000,
+    DW_LANG_hi_user =  0xffff;
+
+/** enum llvm::dwarf::CaseSensitivity */
+public static final int
+
+  DW_ID_case_sensitive =  0x00,
+  DW_ID_up_case =  0x01,
+  DW_ID_down_case =  0x02,
+  DW_ID_case_insensitive =  0x03;
+
+/** enum llvm::dwarf::CallingConvention */
+public static final int
+
+    DW_CC_normal =  0x01,
+    DW_CC_program =  0x02,
+    DW_CC_nocall =  0x03,
+    DW_CC_GNU_borland_fastcall_i386 =  0x41,
+    DW_CC_BORLAND_safecall =  0xb0,
+    DW_CC_BORLAND_stdcall =  0xb1,
+    DW_CC_BORLAND_pascal =  0xb2,
+    DW_CC_BORLAND_msfastcall =  0xb3,
+    DW_CC_BORLAND_msreturn =  0xb4,
+    DW_CC_BORLAND_thiscall =  0xb5,
+    DW_CC_BORLAND_fastcall =  0xb6,
+    DW_CC_LLVM_vectorcall =  0xc0,
+    DW_CC_lo_user =  0x40,
+    DW_CC_hi_user =  0xff;
+
+/** enum llvm::dwarf::InlineAttribute */
+public static final int
+
+  DW_INL_not_inlined =  0x00,
+  DW_INL_inlined =  0x01,
+  DW_INL_declared_not_inlined =  0x02,
+  DW_INL_declared_inlined =  0x03;
+
+/** enum llvm::dwarf::ArrayDimensionOrdering */
+public static final int
+
+  DW_ORD_row_major =  0x00,
+  DW_ORD_col_major =  0x01;
+
+/** enum llvm::dwarf::DiscriminantList */
+public static final int
+
+  DW_DSC_label =  0x00,
+  DW_DSC_range =  0x01;
+
+/** enum llvm::dwarf::LineNumberOps */
+public static final int
+
+  DW_LNS_extended_op =  0x00,
+  DW_LNS_copy =  0x01,
+  DW_LNS_advance_pc =  0x02,
+  DW_LNS_advance_line =  0x03,
+  DW_LNS_set_file =  0x04,
+  DW_LNS_set_column =  0x05,
+  DW_LNS_negate_stmt =  0x06,
+  DW_LNS_set_basic_block =  0x07,
+  DW_LNS_const_add_pc =  0x08,
+  DW_LNS_fixed_advance_pc =  0x09,
+  DW_LNS_set_prologue_end =  0x0a,
+  DW_LNS_set_epilogue_begin =  0x0b,
+  DW_LNS_set_isa =  0x0c;
+
+/** enum llvm::dwarf::LineNumberExtendedOps */
+public static final int
+
+  DW_LNE_end_sequence =  0x01,
+  DW_LNE_set_address =  0x02,
+  DW_LNE_define_file =  0x03,
+  DW_LNE_set_discriminator =  0x04,
+  DW_LNE_lo_user =  0x80,
+  DW_LNE_hi_user =  0xff;
+
+/** enum llvm::dwarf::MacinfoRecordType */
+public static final int
+
+  DW_MACINFO_define =  0x01,
+  DW_MACINFO_undef =  0x02,
+  DW_MACINFO_start_file =  0x03,
+  DW_MACINFO_end_file =  0x04,
+  DW_MACINFO_vendor_ext =  0xff;
+
+/** enum llvm::dwarf::MacroEntryType */
+public static final int
+
+  DW_MACRO_define =  0x01,
+  DW_MACRO_undef =  0x02,
+  DW_MACRO_start_file =  0x03,
+  DW_MACRO_end_file =  0x04,
+  DW_MACRO_define_indirect =  0x05,
+  DW_MACRO_undef_indirect =  0x06,
+  DW_MACRO_transparent_include =  0x07,
+  DW_MACRO_define_indirect_sup =  0x08,
+  DW_MACRO_undef_indirect_sup =  0x09,
+  DW_MACRO_transparent_include_sup =  0x0a,
+  DW_MACRO_define_indirectx =  0x0b,
+  DW_MACRO_undef_indirectx =  0x0c,
+  DW_MACRO_lo_user =  0xe0,
+  DW_MACRO_hi_user =  0xff;
+
+/** enum llvm::dwarf::CallFrameInfo */
+public static final int
+
+  DW_CFA_extended =  0x00,
+  DW_CFA_nop =  0x00,
+  DW_CFA_advance_loc =  0x40,
+  DW_CFA_offset =  0x80,
+  DW_CFA_restore =  0xc0,
+  DW_CFA_set_loc =  0x01,
+  DW_CFA_advance_loc1 =  0x02,
+  DW_CFA_advance_loc2 =  0x03,
+  DW_CFA_advance_loc4 =  0x04,
+  DW_CFA_offset_extended =  0x05,
+  DW_CFA_restore_extended =  0x06,
+  DW_CFA_undefined =  0x07,
+  DW_CFA_same_value =  0x08,
+  DW_CFA_register =  0x09,
+  DW_CFA_remember_state =  0x0a,
+  DW_CFA_restore_state =  0x0b,
+  DW_CFA_def_cfa =  0x0c,
+  DW_CFA_def_cfa_register =  0x0d,
+  DW_CFA_def_cfa_offset =  0x0e,
+  DW_CFA_def_cfa_expression =  0x0f,
+  DW_CFA_expression =  0x10,
+  DW_CFA_offset_extended_sf =  0x11,
+  DW_CFA_def_cfa_sf =  0x12,
+  DW_CFA_def_cfa_offset_sf =  0x13,
+  DW_CFA_val_offset =  0x14,
+  DW_CFA_val_offset_sf =  0x15,
+  DW_CFA_val_expression =  0x16,
+  DW_CFA_MIPS_advance_loc8 =  0x1d,
+  DW_CFA_GNU_window_save =  0x2d,
+  DW_CFA_GNU_args_size =  0x2e,
+  DW_CFA_lo_user =  0x1c,
+  DW_CFA_hi_user =  0x3f;
+
+/** enum llvm::dwarf::Constants */
+public static final int
+
+  DW_CHILDREN_no =  0x00,
+  DW_CHILDREN_yes =  0x01,
+
+  DW_EH_PE_absptr =  0x00,
+  DW_EH_PE_omit =  0xff,
+  DW_EH_PE_uleb128 =  0x01,
+  DW_EH_PE_udata2 =  0x02,
+  DW_EH_PE_udata4 =  0x03,
+  DW_EH_PE_udata8 =  0x04,
+  DW_EH_PE_sleb128 =  0x09,
+  DW_EH_PE_sdata2 =  0x0A,
+  DW_EH_PE_sdata4 =  0x0B,
+  DW_EH_PE_sdata8 =  0x0C,
+  DW_EH_PE_signed =  0x08,
+  DW_EH_PE_pcrel =  0x10,
+  DW_EH_PE_textrel =  0x20,
+  DW_EH_PE_datarel =  0x30,
+  DW_EH_PE_funcrel =  0x40,
+  DW_EH_PE_aligned =  0x50,
+  DW_EH_PE_indirect =  0x80;
+
+
+/** enum llvm::dwarf::LocationListEntry */
+public static final byte
+  DW_LLE_end_of_list_entry = 0,
+  DW_LLE_base_address_selection_entry = 1,
+  DW_LLE_start_end_entry = 2,
+  DW_LLE_start_length_entry = 3,
+  DW_LLE_offset_pair_entry = 4;
+
+
+
+/** enum llvm::dwarf::ApplePropertyAttributes */
+public static final int
+
+  DW_APPLE_PROPERTY_readonly =  0x01,
+  DW_APPLE_PROPERTY_getter =  0x02,
+  DW_APPLE_PROPERTY_assign =  0x04,
+  DW_APPLE_PROPERTY_readwrite =  0x08,
+  DW_APPLE_PROPERTY_retain =  0x10,
+  DW_APPLE_PROPERTY_copy =  0x20,
+  DW_APPLE_PROPERTY_nonatomic =  0x40,
+  DW_APPLE_PROPERTY_setter =  0x80,
+  DW_APPLE_PROPERTY_atomic =  0x100,
+  DW_APPLE_PROPERTY_weak =  0x200,
+  DW_APPLE_PROPERTY_strong =  0x400,
+  DW_APPLE_PROPERTY_unsafe_unretained =  0x800,
+  DW_APPLE_PROPERTY_nullability =  0x1000,
+  DW_APPLE_PROPERTY_null_resettable =  0x2000,
+  DW_APPLE_PROPERTY_class =  0x4000;
+
+
+/** enum llvm::dwarf::AcceleratorTable */
+public static final long
+
+  DW_ATOM_null =  0L,
+  DW_ATOM_die_offset =  1L,
+  DW_ATOM_cu_offset =  2L,
+
+  DW_ATOM_die_tag =  3L,
+  DW_ATOM_type_flags =  4L,
+
+
+
+
+
+  DW_FLAG_type_implementation =  2L,
+
+
+
+
+  DW_hash_function_djb =  0L;
+
+
+/** enum llvm::dwarf::GDBIndexEntryKind */
+public static final int
+  GIEK_NONE = 0,
+  GIEK_TYPE = 1,
+  GIEK_VARIABLE = 2,
+  GIEK_FUNCTION = 3,
+  GIEK_OTHER = 4,
+  GIEK_UNUSED5 = 5,
+  GIEK_UNUSED6 = 6,
+  GIEK_UNUSED7 = 7;
+
+/** enum llvm::dwarf::GDBIndexEntryLinkage */
+public static final int
+  GIEL_EXTERNAL = 0,
+  GIEL_STATIC = 1;
+
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer TagString(@Cast("unsigned") int Tag);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer ChildrenString(@Cast("unsigned") int Children);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer AttributeString(@Cast("unsigned") int Attribute);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer FormEncodingString(@Cast("unsigned") int Encoding);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer OperationEncodingString(@Cast("unsigned") int Encoding);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer AttributeEncodingString(@Cast("unsigned") int Encoding);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer DecimalSignString(@Cast("unsigned") int Sign);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer EndianityString(@Cast("unsigned") int Endian);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer AccessibilityString(@Cast("unsigned") int Access);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer VisibilityString(@Cast("unsigned") int Visibility);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer VirtualityString(@Cast("unsigned") int Virtuality);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer LanguageString(@Cast("unsigned") int Language);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer CaseString(@Cast("unsigned") int Case);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer ConventionString(@Cast("unsigned") int Convention);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer InlineCodeString(@Cast("unsigned") int Code);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer ArrayOrderString(@Cast("unsigned") int Order);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer DiscriminantString(@Cast("unsigned") int Discriminant);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer LNStandardString(@Cast("unsigned") int Standard);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer LNExtendedString(@Cast("unsigned") int Encoding);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer MacinfoString(@Cast("unsigned") int Encoding);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer CallFrameString(@Cast("unsigned") int Encoding);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer ApplePropertyString(@Cast("unsigned") int arg0);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer AtomTypeString(@Cast("unsigned") int Atom);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer GDBIndexEntryKindString(@Cast("llvm::dwarf::GDBIndexEntryKind") int Kind);
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer GDBIndexEntryLinkageString(@Cast("llvm::dwarf::GDBIndexEntryLinkage") int Linkage);
+
+@Namespace("llvm::dwarf") public static native @Cast("unsigned") int getTag(@ByVal StringRef TagString);
+@Namespace("llvm::dwarf") public static native @Cast("unsigned") int getOperationEncoding(@ByVal StringRef OperationEncodingString);
+@Namespace("llvm::dwarf") public static native @Cast("unsigned") int getVirtuality(@ByVal StringRef VirtualityString);
+@Namespace("llvm::dwarf") public static native @Cast("unsigned") int getLanguage(@ByVal StringRef LanguageString);
+@Namespace("llvm::dwarf") public static native @Cast("unsigned") int getCallingConvention(@ByVal StringRef LanguageString);
+@Namespace("llvm::dwarf") public static native @Cast("unsigned") int getAttributeEncoding(@ByVal StringRef EncodingString);
+@Namespace("llvm::dwarf") public static native @Cast("unsigned") int getMacinfo(@ByVal StringRef MacinfoString);
+
+
+
+
+@Namespace("llvm::dwarf") public static native @Cast("const char*") BytePointer AttributeValueString(@Cast("uint16_t") short Attr, @Cast("unsigned") int Val);
+
+@Namespace("llvm::dwarf") @NoOffset public static class PubIndexEntryDescriptor extends Pointer {
+    static { Loader.load(); }
+    /** Pointer cast constructor. Invokes {@link Pointer#Pointer(Pointer)}. */
+    public PubIndexEntryDescriptor(Pointer p) { super(p); }
+
+  public native @Cast("llvm::dwarf::GDBIndexEntryKind") int Kind(); public native PubIndexEntryDescriptor Kind(int Kind);
+  public native @Cast("llvm::dwarf::GDBIndexEntryLinkage") int Linkage(); public native PubIndexEntryDescriptor Linkage(int Linkage);
+  public PubIndexEntryDescriptor(@Cast("llvm::dwarf::GDBIndexEntryKind") int Kind, @Cast("llvm::dwarf::GDBIndexEntryLinkage") int Linkage) { super((Pointer)null); allocate(Kind, Linkage); }
+  private native void allocate(@Cast("llvm::dwarf::GDBIndexEntryKind") int Kind, @Cast("llvm::dwarf::GDBIndexEntryLinkage") int Linkage);
+                 public PubIndexEntryDescriptor(@Cast("llvm::dwarf::GDBIndexEntryKind") int Kind) { super((Pointer)null); allocate(Kind); }
+                 private native void allocate(@Cast("llvm::dwarf::GDBIndexEntryKind") int Kind);
+  public PubIndexEntryDescriptor(@Cast("uint8_t") byte Value) { super((Pointer)null); allocate(Value); }
+  private native void allocate(@Cast("uint8_t") byte Value);
+  public native @Cast("uint8_t") byte toBits();
+}
+
+
+
+
 
 
 }
